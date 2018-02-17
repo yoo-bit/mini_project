@@ -1,0 +1,120 @@
+<?xml version="1.0"?>
+<robot name="1dhopper">
+
+   <material name="blue">
+    <color rgba="0 0 0.8 1"/>
+  </material>
+
+  <material name="red">
+   <color rgba="0.8 0 0 1"/>
+ </material>
+
+  <material name="white">
+    <color rgba="1 1 1 0.5"/>
+  </material>
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <cylinder length="0.5" radius="0.04"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+    <collision>
+       <geometry>
+         <cylinder length="0.5" radius="0.04"/>
+       </geometry>
+     </collision>
+     <inertial>
+     <mass value="0.15"/>
+     <inertia ixx="0.4" ixy="0.0" ixz="0.0" iyy="0.4" iyz="0.0" izz="0.2"/>
+   </inertial>
+
+  </link>
+
+ <link name="balance_beam">
+    <visual>
+      <geometry>
+        <cylinder length="1.5" radius="0.03"/>
+      </geometry>
+      <origin rpy="0 1.57075 0" xyz="0 0 0"/>
+    </visual>
+    <collision>
+       <geometry>
+         <cylinder length="1.5" radius="0.03"/>
+       </geometry>
+       <origin rpy="0 1.57075 0" xyz="0 0 0"/>
+     </collision>
+     <inertial>
+     <mass value="8"/>
+     <inertia ixx="0.4" ixy="0.0" ixz="0.0" iyy="0.4" iyz="0.0" izz="0.2"/>
+     <origin rpy="0 1.57075 0" xyz="0 0 0"/>
+   </inertial>
+  </link>
+
+<joint name="base_to_beam" type="continuous">
+    <axis xyz="0 1 0"/>
+    <!-- <limit effort="1000.0" lower="-0.8" upper="0.8" velocity="10"/> -->
+    <parent link="base_link"/>
+    <child link="balance_beam"/>
+    <origin xyz="0 0 0.25"/>
+
+  </joint>
+
+<link name="leg">
+    <visual>
+      <geometry>
+        <cylinder length="0.6" radius="0.02"/>
+      </geometry>
+      <material name="blue"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </visual>
+    <collision>
+       <geometry>
+         <cylinder length="0.6" radius="0.02"/>
+       </geometry>
+       <origin rpy="0 0 0" xyz="0 0 0"/>
+     </collision>
+     <inertial>
+     <mass value="0.45"/>
+     <inertia ixx="0.4" ixy="0.0" ixz="0.0" iyy="0.4" iyz="0.0" izz="0.2"/>
+     <origin rpy="0 0 0" xyz="0 0 -0.4"/>
+   </inertial>
+  </link>
+
+<joint name="foot_joint" type="prismatic">
+    <axis xyz="0 0 1"/>
+    <limit effort="1000.0" lower="0" upper="0.4" velocity="10"/>
+    <dynamics damping="10.5" friction="0.8"/>
+    <parent link="base_link"/>
+    <child link="leg"/>
+    <origin xyz="0 0 -0.5"/>
+
+  </joint>
+
+  <link name="toe">
+    <visual>
+      <geometry>
+        <sphere radius="0.02"/>
+      </geometry>
+      <material name="red"/>
+    </visual>
+    <collision>
+      <geometry>
+        <sphere radius="0.02"/>
+      </geometry>
+     </collision>
+     <inertial>
+     <mass value="0.45"/>
+     <mass value="0.01"/>
+     <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+   </inertial>
+
+  </link>
+
+  <joint name="leg_toe" type="fixed">
+      <parent link="leg"/>
+      <child link="toe"/>
+      <origin xyz="0 0 -0.3"/>
+    </joint>
+
+</robot>
