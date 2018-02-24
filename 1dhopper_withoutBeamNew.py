@@ -127,7 +127,6 @@ while 1:
 				# print("error")
 			if time.time() - startTime > 5:
 				p.setJointMotorControl2(bodyUniqueId=boxId,jointIndex=0, controlMode=p.POSITION_CONTROL, targetPosition = desiredAngle,force = 200)
-#
 		if currentState == "LOADING":pass;
 			# print("Stop Exhausting leg, zero hip torque")
 		elif currentState == "COMPRESSION":pass;
