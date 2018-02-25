@@ -125,8 +125,8 @@ while 1:
                     phi=pitchAnglephi,
                     phiDesired=0,
                     phiDerivative=pitchAnglePhiDerivative,
-                    kp=1530,
-                    kv=140
+                    kp=1000,
+                    kv=170
                     )
 
         else:
@@ -147,10 +147,10 @@ while 1:
             desiredAngle = calculateDesiredLegAndBodyAngle(
                     phi=-pitchAnglephi,
                     forwardSpeed=forwardVelocity,
-                    desiredForwardSpeed=0.2,
+                    desiredForwardSpeed=0.3,
                     stancePhaseDuration=averageStanceDuration,
                     r=legLength,
-                    feedBackGain=0.2)
+                    feedBackGain=0.3)
             if abs(desiredAngle) < 0.000001:
                 desiredAngle = 0
             if time.time() - startTime > 5:
