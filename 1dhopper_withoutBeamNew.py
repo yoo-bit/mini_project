@@ -8,16 +8,16 @@ from time import sleep
 physicsClient = p.connect(p.GUI)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
 p.setGravity(0, 0, -10)
-# planeId = p.loadURDF("plane2.urdf")
-planeId = p.loadSDF("stadium.sdf")
-cubeStartPos = [0, 0, 3.0]
+planeId = p.loadURDF("plane2.urdf")
+#planeId = p.loadSDF("stadium.sdf")
+cubeStartPos = [0, 0, 2.0]
 cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
 boxId = p.loadURDF(
         "1dHopper_withoutBeam.urdf",
         cubeStartPos,
         cubeStartOrientation,
         useFixedBase=0,
-        globalScaling=2.0
+        globalScaling=1.0
         )
 cubePos, cubeOrn = p.getBasePositionAndOrientation(boxId)
 currentSpringLength = float(1)
@@ -59,7 +59,18 @@ def controlBodyAttitude(physicsClass, phi, phiDesired, phiDerivative, kp, kv):
             jointIndex=0,
             controlMode=p.TORQUE_CONTROL,
             force=-torque)
-    print("Torque:", torque)
+    #print("Torque:", torque)
+
+
+def printRobotStates(physicsClass, robotId):
+    # Print worldLinkLinearVelocity of base link on x(forward) position
+    # print(
+            # 'X velocity:',
+            # physicsClass.getLinkState(bodyUniqueId=robotId, linkIndex=0, computeLinkVelocity=1)[6][0])
+    print(
+            'PitchAngle:',
+            math.atan((p.getLinkState(boxId, 4)[4][2] - p.getLinkState(boxId, 3)[4][2])/abs(p.getLinkState(boxId, 4)[4][0] - p.getLinkState(boxId, 3)[4][0]))
+        )
 
 
 if (useRealTimeSimulation):
@@ -71,25 +82,23 @@ while 1:
         sleep(0.01)  # Time in seconds.
     else:
         robotPos = p.getLinkState(boxId, 0)[0]
-        p.resetDebugVisualizerCamera(5, 0, -20, robotPos)
-        footLength = p.getJointState(boxId, 1)[0]
-        springLength = abs(float(1) - abs(footLength))
-        legLength = springLength + 0.5
+        p.resetDebugVisualizerCamera(3, 5, -20, robotPos)
+        baseLength = 0.5
+        springLength = 0.5 - p.getJointState(boxId, 1)[0];  # print('springLength', springLength);
+        legLength = springLength + baseLength;  # print('legLength', legLength);
         legLengthDifference = springLength - currentSpringLength
         currentSpringLength = springLength
         if abs(legLengthDifference) < 0.000001:
             legLengthDifference = 0
-        stiffness = float(1)/springLength
-        springHardness = 3000.0
-        legTorque = stiffness * float(abs(1 - springLength)) * springHardness
+        stiffness = float(1)/(springLength)
+        springHardness = 5000.0
+        legTorque = stiffness * float(abs(0.5 - springLength)) * springHardness
         legAndBodyAngle = 1.57079632679 - p.getJointState(boxId, 0)[0]
         toeLinkHeight = p.getLinkState(boxId, 2)[0][2]
         forwardVelocity = p.getLinkState(boxId, 3, computeLinkVelocity=1)[7][2]
         pitchAnglephiCurrent = math.atan((p.getLinkState(boxId, 4)[4][2] - p.getLinkState(boxId, 3)[4][2])/abs(p.getLinkState(boxId, 4)[4][0] - p.getLinkState(boxId, 3)[4][0]))
         pitchAnglePhiDerivative = pitchAnglephiCurrent - pitchAnglephi
         pitchAnglephi = pitchAnglephiCurrent
-        # print(pitchAnglePhiDerivative)
-        # print("pitchAngle:",pitchAnglephi)
         if abs(forwardVelocity) < 0.0000001:
             forwardVelocity = 0
         if (toeLinkHeight > 0) and (toeLinkHeight < 0.2):
@@ -124,18 +133,14 @@ while 1:
             if currentState == "THRUST":
                 liftOffTime = time.time()
                 stanceDuration = liftOffTime - touchDownTime
-                # print("StanceDuration:",stanceDuration)
                 stancePhaceTimeArray.append(liftOffTime - touchDownTime)
-                # print("Average Stance Duration:",mean(stancePhaceTimeArray))
-                # print("Lift off")
-        # 	# print("FLIGHT")
             toeOffTheGround = True
             currentState = stateArray[4]
             p.setJointMotorControl2(
                         bodyUniqueId=boxId,
                         jointIndex=1,
                         controlMode=p.POSITION_CONTROL,
-                        targetPosition=0.5,
+                        targetPosition=0.2,
                         force=600
                         )
             averageStanceDuration = mean(stancePhaceTimeArray)
@@ -167,3 +172,4 @@ while 1:
         elif currentState == "FLIGHT":
             pass
         p.stepSimulation()
+        printRobotStates(p, boxId)
