@@ -6,7 +6,7 @@ import time
 import decimal
 from time import sleep
 physicsClient = p.connect(p.GUI)
-p.setAdditionalSearchPath(pybullet_data.getDataPath())
+#p.setAdditionalSearchPath(pybullet_data.getDataPath())
 p.setGravity(0, 0, -10)
 planeId = p.loadURDF("plane2.urdf")
 #planeId = p.loadSDF("stadium.sdf")
