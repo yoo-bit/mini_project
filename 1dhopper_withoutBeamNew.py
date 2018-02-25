@@ -62,11 +62,20 @@ def controlBodyAttitude(physicsClass, phi, phiDesired, phiDerivative, kp, kv):
     #print("Torque:", torque)
 
 
-def printRobotStates(physicsClass, robotId):
+def calculateDesiredFowardSpeed(currentPosition, targetPosition, maxForwardSpeed, gain):
+    if gain*(targetPosition - currentPosition) < 0:
+        xd = max(gain*(targetPosition - currentPosition), -maxForwardSpeed)
+    else:
+        xd = min(gain*(targetPosition - currentPosition), maxForwardSpeed)
+    print('desiredSpeedX', xd)
+    return xd
+
+
+#def printRobotStates(physicsClass, robotId):
     # Print worldLinkLinearVelocity of base link on x(forward) position
-    print(
-            'X velocity:',
-            physicsClass.getLinkState(bodyUniqueId=robotId, linkIndex=0, computeLinkVelocity=1)[6][0])
+    # print(
+            # 'X velocity:',
+            # physicsClass.getLinkState(bodyUniqueId=robotId, linkIndex=0, computeLinkVelocity=1)[6][0])
     # print(
             # 'PitchAngle:',
             # math.atan((p.getLinkState(boxId, 4)[4][2] - p.getLinkState(boxId, 3)[4][2])/abs(p.getLinkState(boxId, 4)[4][0] - p.getLinkState(boxId, 3)[4][0]))
@@ -99,6 +108,13 @@ while 1:
         pitchAnglephiCurrent = math.atan((p.getLinkState(boxId, 4)[4][2] - p.getLinkState(boxId, 3)[4][2])/abs(p.getLinkState(boxId, 4)[4][0] - p.getLinkState(boxId, 3)[4][0]))
         pitchAnglePhiDerivative = pitchAnglephiCurrent - pitchAnglephi
         pitchAnglephi = pitchAnglephiCurrent
+        currentBodyPositionX = p.getLinkState(boxId, 0)[4][0]; print('x position', currentBodyPositionX)
+        desiredForwardSpeedX = calculateDesiredFowardSpeed(
+                currentPosition=currentBodyPositionX,
+                targetPosition=-7.0,
+                maxForwardSpeed=0.5,
+                gain=0.3
+                )
         if abs(forwardVelocity) < 0.0000001:
             forwardVelocity = 0
         if (toeLinkHeight > 0) and (toeLinkHeight < 0.2):
@@ -147,7 +163,7 @@ while 1:
             desiredAngle = calculateDesiredLegAndBodyAngle(
                     phi=-pitchAnglephi,
                     forwardSpeed=forwardVelocity,
-                    desiredForwardSpeed=0.3,
+                    desiredForwardSpeed=desiredForwardSpeedX,
                     stancePhaseDuration=averageStanceDuration,
                     r=legLength,
                     feedBackGain=0.3)
@@ -172,4 +188,3 @@ while 1:
         elif currentState == "FLIGHT":
             pass
         p.stepSimulation()
-        printRobotStates(p, boxId)
