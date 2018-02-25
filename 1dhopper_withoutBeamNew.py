@@ -20,7 +20,7 @@ boxId = p.loadURDF(
         globalScaling=1.0
         )
 cubePos, cubeOrn = p.getBasePositionAndOrientation(boxId)
-currentSpringLength = float(1)
+currentSpringLength = float(0.5)
 useRealTimeSimulation = 0
 stateArray = ["LOADING", "COMPRESSION", "THRUST", "UNLOADING", "FLIGHT"]
 currentState = "NULL"
@@ -64,13 +64,13 @@ def controlBodyAttitude(physicsClass, phi, phiDesired, phiDerivative, kp, kv):
 
 def printRobotStates(physicsClass, robotId):
     # Print worldLinkLinearVelocity of base link on x(forward) position
-    # print(
-            # 'X velocity:',
-            # physicsClass.getLinkState(bodyUniqueId=robotId, linkIndex=0, computeLinkVelocity=1)[6][0])
     print(
-            'PitchAngle:',
-            math.atan((p.getLinkState(boxId, 4)[4][2] - p.getLinkState(boxId, 3)[4][2])/abs(p.getLinkState(boxId, 4)[4][0] - p.getLinkState(boxId, 3)[4][0]))
-        )
+            'X velocity:',
+            physicsClass.getLinkState(bodyUniqueId=robotId, linkIndex=0, computeLinkVelocity=1)[6][0])
+    # print(
+            # 'PitchAngle:',
+            # math.atan((p.getLinkState(boxId, 4)[4][2] - p.getLinkState(boxId, 3)[4][2])/abs(p.getLinkState(boxId, 4)[4][0] - p.getLinkState(boxId, 3)[4][0]))
+        # )
 
 
 if (useRealTimeSimulation):
@@ -145,12 +145,12 @@ while 1:
                         )
             averageStanceDuration = mean(stancePhaceTimeArray)
             desiredAngle = calculateDesiredLegAndBodyAngle(
-                    phi=pitchAnglephi,
+                    phi=-pitchAnglephi,
                     forwardSpeed=forwardVelocity,
                     desiredForwardSpeed=0.2,
                     stancePhaseDuration=averageStanceDuration,
                     r=legLength,
-                    feedBackGain=0.5)
+                    feedBackGain=0.2)
             if abs(desiredAngle) < 0.000001:
                 desiredAngle = 0
             if time.time() - startTime > 5:
