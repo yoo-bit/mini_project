@@ -111,7 +111,7 @@ while 1:
         currentBodyPositionX = p.getLinkState(boxId, 0)[4][0]; print('x position', currentBodyPositionX)
         desiredForwardSpeedX = calculateDesiredFowardSpeed(
                 currentPosition=currentBodyPositionX,
-                targetPosition=-7.0,
+                targetPosition=7.0,
                 maxForwardSpeed=0.5,
                 gain=0.3
                 )
@@ -141,8 +141,8 @@ while 1:
                     phi=pitchAnglephi,
                     phiDesired=0,
                     phiDerivative=pitchAnglePhiDerivative,
-                    kp=1000,
-                    kv=170
+                    kp=960,
+                    kv=140
                     )
 
         else:
