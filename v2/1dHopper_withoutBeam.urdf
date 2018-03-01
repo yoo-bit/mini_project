@@ -27,7 +27,7 @@
        <origin rpy="0 1.57075 0" xyz="0 0 0"/>
      </collision>
      <inertial>
-     <mass value="6"/>
+     <mass value="5"/>
      <inertia ixx="0.4" ixy="0.0" ixz="0.0" iyy="0.4" iyz="0.0" izz="0.2"/>
      <origin rpy="0 1.57075 0" xyz="0 0 0"/>
    </inertial>
@@ -55,7 +55,7 @@
   <joint name="base_to_beam" type="revolute">
       <axis xyz="0 1 0"/>
       <limit effort="1000.0" lower="-1.57079632679" upper="1.57079632679" velocity="100"/>
-       <dynamics damping="0.0" friction="0.3"/>
+       <dynamics damping="0.0" friction="0.0"/>
       <!-- <limit effort="1000.0" lower="-1.2" upper="1.2" velocity="10"/> -->
       <parent link="balance_beam"/>
       <child link="base_link"/>
@@ -87,7 +87,7 @@
     <joint name="foot_joint" type="prismatic">
         <axis xyz="0 0 1"/>
         <limit effort="1000.0" lower="0" upper="0.5" velocity="1000"/>
-	 <dynamics damping="50" friction="0.0"/>
+	 <dynamics damping="150" friction="0.0"/> 
         <parent link="base_link"/>
         <child link="leg"/>
         <origin xyz="0 0 -0.5"/>

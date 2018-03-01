@@ -6,7 +6,7 @@ import time
 import decimal
 from time import sleep
 physicsClient = p.connect(p.GUI)
-p.setAdditionalSearchPath(pybullet_data.getDataPath())
+#p.setAdditionalSearchPath(pybullet_data.getDataPath())
 p.setGravity(0, 0, -10)
 planeId = p.loadURDF("plane2.urdf")
 #planeId = p.loadSDF("stadium.sdf")
@@ -63,15 +63,19 @@ def controlBodyAttitude(physicsClass, phi, phiDesired, phiDerivative, kp, kv):
 
 
 def calculateDesiredFowardSpeed(currentPosition, targetPosition, maxForwardSpeed, gain):
-    xd = min(gain*(currentPosition - targetPosition), maxForwardSpeed)
+    if gain*(targetPosition - currentPosition) < 0:
+        xd = max(gain*(targetPosition - currentPosition), -maxForwardSpeed)
+    else:
+        xd = min(gain*(targetPosition - currentPosition), maxForwardSpeed)
+    print('desiredSpeedX', xd)
     return xd
 
 
-def printRobotStates(physicsClass, robotId):
+#def printRobotStates(physicsClass, robotId):
     # Print worldLinkLinearVelocity of base link on x(forward) position
-    print(
-            'X velocity:',
-            physicsClass.getLinkState(bodyUniqueId=robotId, linkIndex=0, computeLinkVelocity=1)[6][0])
+    # print(
+            # 'X velocity:',
+            # physicsClass.getLinkState(bodyUniqueId=robotId, linkIndex=0, computeLinkVelocity=1)[6][0])
     # print(
             # 'PitchAngle:',
             # math.atan((p.getLinkState(boxId, 4)[4][2] - p.getLinkState(boxId, 3)[4][2])/abs(p.getLinkState(boxId, 4)[4][0] - p.getLinkState(boxId, 3)[4][0]))
@@ -104,12 +108,20 @@ while 1:
         pitchAnglephiCurrent = math.atan((p.getLinkState(boxId, 4)[4][2] - p.getLinkState(boxId, 3)[4][2])/abs(p.getLinkState(boxId, 4)[4][0] - p.getLinkState(boxId, 3)[4][0]))
         pitchAnglePhiDerivative = pitchAnglephiCurrent - pitchAnglephi
         pitchAnglephi = pitchAnglephiCurrent
-        currentBodyPositionX = p.getLinkState(boxId, 0)[4][0]; print('x position')
-        #desiredForwardSpeed = calculateDesiredFowardSpeed(currentPosition=, targetPosition, maxForwardSpeed, gain)
+        currentBodyPositionX = p.getLinkState(boxId, 0)[4][0]; print('x position', currentBodyPositionX)
+        if time.time() - startTime > 15:
+            desiredPosition = -7.0
+        else:
+            desiredPosition = 7.0
+        desiredForwardSpeedX = calculateDesiredFowardSpeed(
+                currentPosition=currentBodyPositionX,
+                targetPosition=desiredPosition,
+                maxForwardSpeed=0.5,
+                gain=0.3
+                )
         if abs(forwardVelocity) < 0.0000001:
             forwardVelocity = 0
-        contactPoints = p.getContactPoints(bodyA=boxId,bodyB=planeId,linkIndexA=2,linkIndexB=-1)
-        if len(contactPoints) > 0:
+        if (toeLinkHeight > 0) and (toeLinkHeight < 0.2):
             if currentState == "FLIGHT":
                     touchDownTime = time.time()
                     currentState = stateArray[0]
@@ -123,18 +135,18 @@ while 1:
                 currentState = stateArray[3]
                 hasThrusted = False  # ULOADING
             p.setJointMotorControl2(
-                        bodyUniqueId=boxId,
-                        jointIndex=1,
-                        controlMode=p.TORQUE_CONTROL,
-                        force=-legTorque
-                        )
+                    bodyUniqueId=boxId,
+                    jointIndex=1,
+                    controlMode=p.TORQUE_CONTROL,
+                    force=-legTorque
+                    )
             controlBodyAttitude(
                     physicsClass=p,
                     phi=pitchAnglephi,
                     phiDesired=0,
                     phiDerivative=pitchAnglePhiDerivative,
-                    kp=1000,
-                    kv=170
+                    kp=960,
+                    kv=140
                     )
 
         else:
@@ -155,7 +167,7 @@ while 1:
             desiredAngle = calculateDesiredLegAndBodyAngle(
                     phi=-pitchAnglephi,
                     forwardSpeed=forwardVelocity,
-                    desiredForwardSpeed=0.3,
+                    desiredForwardSpeed=desiredForwardSpeedX,
                     stancePhaseDuration=averageStanceDuration,
                     r=legLength,
                     feedBackGain=0.3)
@@ -180,4 +192,3 @@ while 1:
         elif currentState == "FLIGHT":
             pass
         p.stepSimulation()
-        printRobotStates(p, boxId)
