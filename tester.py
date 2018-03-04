@@ -6,10 +6,10 @@ import time
 import decimal
 from time import sleep
 physicsClient = p.connect(p.GUI)
-#p.setAdditionalSearchPath(pybullet_data.getDataPath())
+# p.setAdditionalSearchPath(pybullet_data.getDataPath())
 p.setGravity(0, 0, -10)
 planeId = p.loadURDF("plane2.urdf")
-#planeId = p.loadSDF("stadium.sdf")
+# planeId = p.loadSDF("stadium.sdf")
 cubeStartPos = [0, 0, 1.5]
 cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
 boxId = p.loadURDF(
@@ -47,16 +47,19 @@ pitchAnglephi = 0
 # print(p.getJointInfo(boxId,4))
 
 
-def calculateDesiredLegAndBodyAngle(phi, forwardSpeed, desiredForwardSpeed, stancePhaseDuration, r, feedBackGain):
-    secondPart = (forwardSpeed * stancePhaseDuration)/(2*r) + (feedBackGain * (forwardSpeed - desiredForwardSpeed))/r
+def calculateDesiredLegAndBodyAngle(
+        phi, forwardSpeed, desiredForwardSpeed,
+        stancePhaseDuration, r, feedBackGain):
+    secondPart = (forwardSpeed * stancePhaseDuration)/(2*r) + \
+                 (feedBackGain * (forwardSpeed - desiredForwardSpeed))/r
     desiredAngle = phi - math.asin(secondPart)
     # print('secondPart', secondPart)
     # print('desiredAngle', desiredAngle)
     return desiredAngle
 
 
+# Hold body upright in stance phase
 def controlBodyAttitude(physicsClass, phi, phiDesired, phiDerivative, kp, kv):
-    currentPosition = physicsClass.getJointState(boxId, 0)[0]
     torque = -kp*(phi-phiDesired) - kv*(phiDerivative)
     physicsClass.setJointMotorControl2(
             bodyUniqueId=boxId,
@@ -68,16 +71,18 @@ def controlBodyAttitude(physicsClass, phi, phiDesired, phiDerivative, kp, kv):
     # print("Torque:", torque)
 
 
-def calculateDesiredFowardSpeed(currentPosition, targetPosition, maxForwardSpeed, gain):
+def calculateDesiredFowardSpeed(
+        currentPosition, targetPosition,
+        maxForwardSpeed, gain):
     if gain*(targetPosition - currentPosition) < 0:
         xd = max(gain*(targetPosition - currentPosition), -maxForwardSpeed)
     else:
         xd = min(gain*(targetPosition - currentPosition), maxForwardSpeed)
-    #print('t-c', gain*(targetPosition - currentPosition))
-    #print('desiredSpeedX', xd)
     return xd
 
-def placeLegForward(physicsClass,desiredAngle):
+
+# Funtion for placing the foot position in FLIGHT state
+def placeLegForward(physicsClass, desiredAngle):
     p.setJointMotorControl2(
             bodyUniqueId=boxId,
             jointIndex=0,
@@ -86,15 +91,6 @@ def placeLegForward(physicsClass,desiredAngle):
             force=5,
             maxVelocity=3
             )
-#def printRobotStates(physicsClass, robotId):
-    # Print worldLinkLinearVelocity of base link on x(forward) position
-    # print(
-            # 'X velocity:',
-            # physicsClass.getLinkState(bodyUniqueId=robotId, linkIndex=0, computeLinkVelocity=1)[6][0])
-    # print(
-            # 'PitchAngle:',
-            # math.atan((p.getLinkState(boxId, 4)[4][2] - p.getLinkState(boxId, 3)[4][2])/abs(p.getLinkState(boxId, 4)[4][0] - p.getLinkState(boxId, 3)[4][0]))
-        # )
 
 
 if (useRealTimeSimulation):
@@ -108,8 +104,8 @@ while 1:
         robotPos = p.getLinkState(boxId, 0)[0]
         p.resetDebugVisualizerCamera(2, 5, -20, robotPos)
         baseLength = 0.5
-        springLength = 0.52 - p.getJointState(boxId, 1)[0];  # print('springLength', springLength);
-        legLength = springLength + baseLength;  # print('legLength', legLength);
+        springLength = 0.52 - p.getJointState(boxId, 1)[0]
+        legLength = springLength + baseLength
         legLengthDifference = springLength - currentSpringLength
         currentSpringLength = springLength
         stiffness = float(1)/(springLength)
@@ -118,21 +114,26 @@ while 1:
         legAndBodyAngle = 1.57079632679 - p.getJointState(boxId, 0)[0]
         toeLinkHeight = p.getLinkState(boxId, 2)[0][2]
         forwardVelocity = p.getLinkState(boxId, 0, computeLinkVelocity=1)[6][0]
-        pitchAnglephiCurrent = math.atan((p.getLinkState(boxId, 4)[4][2] - p.getLinkState(boxId, 3)[4][2])/abs(p.getLinkState(boxId, 4)[4][0] - p.getLinkState(boxId, 3)[4][0]))
+        pitchAnglephiCurrent = math.atan((
+            p.getLinkState(boxId, 4)[4][2] - p.getLinkState(boxId, 3)[4][2]) /
+            abs(p.getLinkState(boxId, 4)[4][0] -
+                p.getLinkState(boxId, 3)[4][0]))
         pitchAnglePhiDerivative = pitchAnglephiCurrent - pitchAnglephi
         pitchAnglephi = pitchAnglephiCurrent
         if time.time() - startTime > 15:
             targetPositionX = 7.0
         else:
             targetPositionX = 7.0
-        currentBodyPositionX = p.getLinkState(boxId, 0)[4][0];  # print('x position', currentBodyPositionX)
+        currentBodyPositionX = p.getLinkState(boxId, 0)[4][0]
         desiredForwardSpeedX = calculateDesiredFowardSpeed(
                 currentPosition=currentBodyPositionX,
                 targetPosition=targetPositionX,
                 maxForwardSpeed=0.5,
                 gain=0.5
                 )
-        contactPoints = p.getContactPoints(bodyA=boxId,bodyB=planeId,linkIndexA=2,linkIndexB=-1)
+        contactPoints = p.getContactPoints(
+                bodyA=boxId, bodyB=planeId,
+                linkIndexA=2, linkIndexB=-1)
         if len(contactPoints) > 0:
             if currentState == "FLIGHT":
                     touchDownTime = time.time()
@@ -144,7 +145,9 @@ while 1:
                 currentState = stateArray[2]
             if (abs(legLength - 1.02) < 1 and (hasThrusted is True)):
                 currentState = stateArray[3]
-            legTorque = stiffness * float(abs(0.52 - springLength)) * springHardness
+            legTorque = (stiffness *
+                         float(abs(0.52 - springLength)) *
+                         springHardness)
             if abs(0.52 - legLength) < 0.3:
                 stiffness = float(3)/(springLength)
                 p.setJointMotorControl2(
@@ -203,8 +206,7 @@ while 1:
                     stancePhaseDuration=averageStanceDuration,
                     r=1.52,
                     feedBackGain=0.25)
-                #desiredAngle=-0.8
-            placeLegForward(p,desiredAngle)
+            placeLegForward(p, desiredAngle)
             pass
         p.stepSimulation()
         sleep(0.003)
