@@ -6,9 +6,9 @@ import time
 import decimal
 from time import sleep
 physicsClient = p.connect(p.GUI)
-# p.setAdditionalSearchPath(pybullet_data.getDataPath())
+p.setAdditionalSearchPath(pybullet_data.getDataPath())
 p.setGravity(0, 0, -10)
-planeId = p.loadURDF("plane2.urdf")
+planeId = p.loadURDF("plane100.urdf")
 # planeId = p.loadSDF("stadium.sdf")
 cubeStartPos = [0, 0, 1.5]
 cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
@@ -121,15 +121,15 @@ while 1:
         pitchAnglePhiDerivative = pitchAnglephiCurrent - pitchAnglephi
         pitchAnglephi = pitchAnglephiCurrent
         if time.time() - startTime > 15:
-            targetPositionX = 7.0
+            targetPositionX = 20.0
         else:
-            targetPositionX = 7.0
+            targetPositionX = 20.0
         currentBodyPositionX = p.getLinkState(boxId, 0)[4][0]
         desiredForwardSpeedX = calculateDesiredFowardSpeed(
                 currentPosition=currentBodyPositionX,
                 targetPosition=targetPositionX,
-                maxForwardSpeed=0.5,
-                gain=0.5
+                maxForwardSpeed=2.5,
+                gain=0.15
                 )
         contactPoints = p.getContactPoints(
                 bodyA=boxId, bodyB=planeId,
@@ -156,7 +156,7 @@ while 1:
                             jointIndex=1,
                             controlMode=p.POSITION_CONTROL,
                             targetPosition=0.0,
-                            maxVelocity=3.8
+                            maxVelocity=5
                             )
                 hasThrusted = True
             else:
@@ -164,9 +164,8 @@ while 1:
                     p.setJointMotorControl2(
                             bodyUniqueId=boxId,
                             jointIndex=1,
-                            controlMode=p.POSITION_CONTROL,
-                            targetPosition=0.0,
-                            force=5
+                            controlMode=p.TORQUE_CONTROL,
+                            force=-legTorque
                             )
         else:
             if currentState == "UNLOADING":
@@ -184,18 +183,11 @@ while 1:
                         phi=pitchAnglephi,
                         phiDesired=0,
                         phiDerivative=pitchAnglePhiDerivative,
-                        kp=33,
+                        kp=43,
                         kv=14
                         )
             pass
         elif currentState == "UNLOADING":
-            # Zero hip torque
-            p.setJointMotorControl2(
-                        bodyUniqueId=boxId,
-                        jointIndex=0,
-                        controlMode=p.TORQUE_CONTROL,
-                        force=0
-                        )
             pass
         elif currentState == "FLIGHT":
             # Exhaust leg to low pressure
@@ -203,23 +195,22 @@ while 1:
                             bodyUniqueId=boxId,
                             jointIndex=1,
                             controlMode=p.POSITION_CONTROL,
-                            targetPosition=0.0,
-                            force=5
+                            force=10
                             )
-            desiredAngle = 0.2
+            desiredAngle = 0
             if len(stancePhaceTimeArray) > 0:
                 averageStanceDuration = mean(stancePhaceTimeArray)
                 desiredAngle = calculateDesiredLegAndBodyAngle(
                     phi=-pitchAnglephi,
                     forwardSpeed=forwardVelocity,
-                    desiredForwardSpeed=1.5,
+                    desiredForwardSpeed=desiredForwardSpeedX,
                     stancePhaseDuration=averageStanceDuration,
-                    r=1.52,
-                    feedBackGain=0.25)
+                    r=legLength,
+                    feedBackGain=0.05)
             placeLegForward(p, desiredAngle)
             pass
         p.stepSimulation()
-        sleep(0.003)
+        sleep(0.001)
         currentPosition = p.getJointState(boxId, 0)[0]
         # print('CurrentHipAngle', currentPosition)
         # print(legLength)
