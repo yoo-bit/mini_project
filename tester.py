@@ -121,15 +121,15 @@ while 1:
         pitchAnglePhiDerivative = pitchAnglephiCurrent - pitchAnglephi
         pitchAnglephi = pitchAnglephiCurrent
         if time.time() - startTime > 15:
-            targetPositionX = 20.0
+            targetPositionX = 10.0
         else:
-            targetPositionX = 20.0
+            targetPositionX = 10.0
         currentBodyPositionX = p.getLinkState(boxId, 0)[4][0]
         desiredForwardSpeedX = calculateDesiredFowardSpeed(
                 currentPosition=currentBodyPositionX,
                 targetPosition=targetPositionX,
-                maxForwardSpeed=2.5,
-                gain=0.15
+                maxForwardSpeed=3.0,
+                gain=1.5
                 )
         contactPoints = p.getContactPoints(
                 bodyA=boxId, bodyB=planeId,
@@ -211,7 +211,7 @@ while 1:
             pass
         p.stepSimulation()
         sleep(0.001)
-        currentPosition = p.getJointState(boxId, 0)[0]
+        # print('current position', currentBodyPositionX)
         # print('CurrentHipAngle', currentPosition)
         # print(legLength)
         # print(currentState)
