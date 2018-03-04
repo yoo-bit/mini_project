@@ -134,6 +134,7 @@ while 1:
         contactPoints = p.getContactPoints(
                 bodyA=boxId, bodyB=planeId,
                 linkIndexA=2, linkIndexB=-1)
+        # Set up States
         if len(contactPoints) > 0:
             if currentState == "FLIGHT":
                     touchDownTime = time.time()
@@ -188,6 +189,7 @@ while 1:
                         )
             pass
         elif currentState == "UNLOADING":
+            # Zero hip torque
             p.setJointMotorControl2(
                         bodyUniqueId=boxId,
                         jointIndex=0,
@@ -196,6 +198,14 @@ while 1:
                         )
             pass
         elif currentState == "FLIGHT":
+            # Exhaust leg to low pressure
+            p.setJointMotorControl2(
+                            bodyUniqueId=boxId,
+                            jointIndex=1,
+                            controlMode=p.POSITION_CONTROL,
+                            targetPosition=0.0,
+                            force=5
+                            )
             desiredAngle = 0.2
             if len(stancePhaceTimeArray) > 0:
                 averageStanceDuration = mean(stancePhaceTimeArray)
