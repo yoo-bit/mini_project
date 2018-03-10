@@ -32,10 +32,19 @@ touchDownTime = time.time()
 liftOffTime = time.time()
 stancePhaceTimeArray = []
 p.enableJointForceTorqueSensor(boxId, 0)
-p.addUserDebugText('Target', [15, 0, 0])
+p.addUserDebugText('Target', [7, 0, 0])
 bodyPosition = [0, 0, 0]
+p.setJointMotorControl2(
+            bodyUniqueId=boxId,
+            jointIndex=0,
+            controlMode=p.POSITION_CONTROL,
+            targetPosition=0.0,
+            force=0.0,
+            maxVelocity=2)
 # p.changeDynamics(planeId,-1,lateralFriction=1,spinningFriction=0.1,rollingFriction=0.1)
-# p.createConstraint(boxId,-1,-1,-1,p.JOINT_POINT2POINT,[0,0,0],[0,0,0],[0,0,2]
+# p.createConstraint(boxId, -1, -1, -1,
+                   # p.JOINT_POINT2POINT,
+                   # [0, 0, 0], [0, 0, 0], [0, 0, 2])
 # p.changeDynamics(
 #         boxId,
 #         2,
@@ -75,23 +84,20 @@ def controlBodyAttitude(physicsClass, phi, phiDesired, phiDerivative, kp, kv):
 
 
 def calculateDesiredFowardSpeed(
-        currentPosition, currentSpeed, targetPosition,
-        maxForwardSpeed, kp, kv):
-    xd = min(-kp*(currentPosition - targetPosition) -
-             kv*currentSpeed, maxForwardSpeed)
+        currentPosition, targetPosition,
+        maxForwardSpeed, kp):
+    xd = min(kp*(currentPosition - targetPosition), maxForwardSpeed)
     return xd
 
 
-# Funtion for placing the foot position in FLIGHT state
-def placeLegForward(physicsClass, desiredAngle):
-    p.setJointMotorControl2(
-            bodyUniqueId=boxId,
-            jointIndex=0,
-            controlMode=p.POSITION_CONTROL,
-            targetPosition=desiredAngle,
-            force=2,
-            maxVelocity=5
-            )
+def servoHipAngle(physicsClass, hipAngle, hipAngleDerivative,
+                  desiredHipAngle, kp, kv):
+    torque = -kp*(hipAngle-desiredHipAngle)-kv*hipAngleDerivative
+    physicsClass.setJointMotorControl2(
+                bodyUniqueId=boxId,
+                jointIndex=0,
+                controlMode=p.TORQUE_CONTROL,
+                force=torque)
 
 
 if (useRealTimeSimulation):
@@ -123,21 +129,21 @@ while 1:
                 p.getLinkState(boxId, 3)[4][0]))
         pitchAnglePhiDerivative = pitchAnglephiCurrent - pitchAnglephi
         pitchAnglephi = pitchAnglephiCurrent
+        currentHipAngleDerivative = p.getJointState(boxId, 0)[1]
+        currentHipAngle = p.getJointState(boxId, 0)[0]
         if time.time() - startTime > 15:
-            targetPositionX = 0.0
+            targetPositionX = 7.0
         else:
-            targetPositionX = 15.0
+            targetPositionX = 7.0
         currentBodyPositionX = p.getLinkState(boxId, 0)[4][0]
         currentBodyPosition = p.getLinkState(boxId, 0)[4]
         # p.addUserDebugLine(bodyPosition, currentBodyPosition)
         bodyPosition = currentBodyPosition
         desiredForwardSpeedX = calculateDesiredFowardSpeed(
                 currentPosition=currentBodyPositionX,
-                currentSpeed=forwardVelocity,
                 targetPosition=targetPositionX,
                 maxForwardSpeed=1.2,
-                kp=2,
-                kv=-0.5
+                kp=-1.0
                 )
         contactPoints = p.getContactPoints(
                 bodyA=boxId, bodyB=planeId,
@@ -216,7 +222,10 @@ while 1:
                     stancePhaseDuration=averageStanceDuration,
                     r=legLength-0.25,
                     feedBackGain=0.1)
-            placeLegForward(p, desiredAngle)
+            servoHipAngle(physicsClass=p, hipAngle=currentHipAngle,
+                          hipAngleDerivative=currentHipAngleDerivative,
+                          desiredHipAngle=desiredAngle, kp=47, kv=1.26)
+            # placeLegForward(p, desiredAngle)
             pass
         state = p.getJointState(boxId, 0)[3]
         # print('CurrentState', currentState, 'XPosition', currentBodyPositionX,
@@ -224,7 +233,8 @@ while 1:
               # 'Velocity', forwardVelocity, 'Vd', desiredForwardSpeedX)
         # event = p.getKeyboardEvents()
         p.stepSimulation()
-        sleep(0.0003)
+        sleep(0.0005)
+        # print(pitchAnglePhiDerivative)
         # print(event)
         # print('CurrentState', currentState)
         # print('PitchAngle', pitchAnglephiCurrent)
