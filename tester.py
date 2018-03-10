@@ -31,6 +31,9 @@ startTime = time.time()
 touchDownTime = time.time()
 liftOffTime = time.time()
 stancePhaceTimeArray = []
+p.enableJointForceTorqueSensor(boxId, 0)
+p.addUserDebugText('Target', [15, 0, 0])
+bodyPosition = [0, 0, 0]
 # p.changeDynamics(planeId,-1,lateralFriction=1,spinningFriction=0.1,rollingFriction=0.1)
 # p.createConstraint(boxId,-1,-1,-1,p.JOINT_POINT2POINT,[0,0,0],[0,0,0],[0,0,2]
 # p.changeDynamics(
@@ -72,12 +75,10 @@ def controlBodyAttitude(physicsClass, phi, phiDesired, phiDerivative, kp, kv):
 
 
 def calculateDesiredFowardSpeed(
-        currentPosition, targetPosition,
-        maxForwardSpeed, gain):
-    if gain*(targetPosition - currentPosition) < 0:
-        xd = max(gain*(targetPosition - currentPosition), -maxForwardSpeed)
-    else:
-        xd = min(gain*(targetPosition - currentPosition), maxForwardSpeed)
+        currentPosition, currentSpeed, targetPosition,
+        maxForwardSpeed, kp, kv):
+    xd = min(-kp*(currentPosition - targetPosition) -
+             kv*currentSpeed, maxForwardSpeed)
     return xd
 
 
@@ -88,8 +89,8 @@ def placeLegForward(physicsClass, desiredAngle):
             jointIndex=0,
             controlMode=p.POSITION_CONTROL,
             targetPosition=desiredAngle,
-            force=5,
-            maxVelocity=3
+            force=2,
+            maxVelocity=5
             )
 
 
@@ -114,6 +115,8 @@ while 1:
         legAndBodyAngle = 1.57079632679 - p.getJointState(boxId, 0)[0]
         toeLinkHeight = p.getLinkState(boxId, 2)[0][2]
         forwardVelocity = p.getLinkState(boxId, 0, computeLinkVelocity=1)[6][0]
+        if abs(forwardVelocity) < 0.000001:
+            forwardVelocity = 0
         pitchAnglephiCurrent = math.atan((
             p.getLinkState(boxId, 4)[4][2] - p.getLinkState(boxId, 3)[4][2]) /
             abs(p.getLinkState(boxId, 4)[4][0] -
@@ -121,15 +124,20 @@ while 1:
         pitchAnglePhiDerivative = pitchAnglephiCurrent - pitchAnglephi
         pitchAnglephi = pitchAnglephiCurrent
         if time.time() - startTime > 15:
-            targetPositionX = 10.0
+            targetPositionX = 0.0
         else:
-            targetPositionX = 10.0
+            targetPositionX = 15.0
         currentBodyPositionX = p.getLinkState(boxId, 0)[4][0]
+        currentBodyPosition = p.getLinkState(boxId, 0)[4]
+        # p.addUserDebugLine(bodyPosition, currentBodyPosition)
+        bodyPosition = currentBodyPosition
         desiredForwardSpeedX = calculateDesiredFowardSpeed(
                 currentPosition=currentBodyPositionX,
+                currentSpeed=forwardVelocity,
                 targetPosition=targetPositionX,
-                maxForwardSpeed=3.0,
-                gain=1.5
+                maxForwardSpeed=1.2,
+                kp=2,
+                kv=-0.5
                 )
         contactPoints = p.getContactPoints(
                 bodyA=boxId, bodyB=planeId,
@@ -200,20 +208,29 @@ while 1:
             desiredAngle = 0
             if len(stancePhaceTimeArray) > 0:
                 averageStanceDuration = mean(stancePhaceTimeArray)
+                # print(averageStanceDuration)
                 desiredAngle = calculateDesiredLegAndBodyAngle(
                     phi=-pitchAnglephi,
                     forwardSpeed=forwardVelocity,
                     desiredForwardSpeed=desiredForwardSpeedX,
                     stancePhaseDuration=averageStanceDuration,
-                    r=legLength,
-                    feedBackGain=0.05)
+                    r=legLength-0.25,
+                    feedBackGain=0.1)
             placeLegForward(p, desiredAngle)
             pass
+        state = p.getJointState(boxId, 0)[3]
+        # print('CurrentState', currentState, 'XPosition', currentBodyPositionX,
+              # 'HipTorque', state,
+              # 'Velocity', forwardVelocity, 'Vd', desiredForwardSpeedX)
+        # event = p.getKeyboardEvents()
         p.stepSimulation()
-        sleep(0.001)
+        sleep(0.0003)
+        # print(event)
+        # print('CurrentState', currentState)
+        # print('PitchAngle', pitchAnglephiCurrent)
         # print('current position', currentBodyPositionX)
         # print('CurrentHipAngle', currentPosition)
-        # print(legLength)
+        # print(legLength - 0.25)
         # print(currentState)
         # print('torque', legTorque)
         # print("targetPosition", targetPositionX)
