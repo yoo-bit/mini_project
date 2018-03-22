@@ -17,7 +17,7 @@
  </material>
 
   <material name="white">
-    <color rgba="1 1 1 0.9"/>
+    <color rgba="1 1 1 1"/>
   </material>
 
  <link name="balance_beam">
@@ -35,7 +35,7 @@
        <origin rpy="0 0 0" xyz="0 0 0"/>
      </collision>
      <inertial>
-     <mass value="6"/>
+     <mass value="16"/>
      <inertia ixx="0.5668" ixy="0.0" ixz="0.0" iyy="0.5668" iyz="0.0" izz="0.75088"/>
      <origin rpy="0 0 0" xyz="0 0 0"/>
    </inertial>
@@ -108,7 +108,7 @@
           <geometry>
             <cylinder length="0.5" radius="0.02"/>
           </geometry>
-          <material name="dark"/>
+          <material name="white"/>
           <origin rpy="0 0 0" xyz="0 0 0"/>
         </visual>
         <collision>
@@ -127,7 +127,7 @@
     <joint name="foot_joint" type="prismatic">
         <axis xyz="0 0 1"/>
         <limit effort="1000.0" lower="0" upper="0.5" velocity="1000"/>
-	 <!--<dynamics damping="50" friction="0.0"/>-->
+	 <dynamics damping="0.0" friction="0.0"/>
         <parent link="base_link"/>
         <child link="leg"/>
         <origin xyz="0 0 -0.5"/>
