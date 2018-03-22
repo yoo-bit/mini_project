@@ -78,7 +78,7 @@ def controlBodyAttitude(physicsClass, phi, phiDesired, phiDerivative, kp, kv):
             force=-torque
             )
     # print('targetHipPosition', currentPosition - torque)
-    # print("Torque:", torque)
+    print("Torque:", torque)
 
 
 def calculateDesiredFowardSpeed(
@@ -96,7 +96,7 @@ def servoHipAngle(physicsClass, hipAngle, hipAngleDerivative,
                 jointIndex=0,
                 controlMode=p.TORQUE_CONTROL,
                 force=torque)
-
+    print(torque)
 
 if (useRealTimeSimulation):
     p.setRealTimeSimulation(1)
@@ -231,7 +231,7 @@ while 1:
               # 'Velocity', forwardVelocity, 'Vd', desiredForwardSpeedX)
         # event = p.getKeyboardEvents()
         p.stepSimulation()
-        sleep(0.0005)
+        sleep(0.01)
         # print(pitchAnglePhiDerivative)
         # print(event)
         # print('CurrentState', currentState)

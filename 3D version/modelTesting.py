@@ -15,7 +15,15 @@ useRealTimeSimulation = False
 state = 'NULL'
 #Initial leg joint position
 p.resetDebugVisualizerCamera(2.5, 0, -10, robotPos)
+p.setJointMotorControlArray(
+    robotId,
+    [0,1,2],
+    p.POSITION_CONTROL,
+    targetPositions=[0,0,0],
+    forces=[0,0,0]
+    )
 
+    
 def getCurrentState():
     # Get contact info
     contactPoints = p.getContactPoints(
@@ -55,23 +63,52 @@ def sendTorqueControl(joint, torque):
                 targetPosition=0,
                 force=torque)
     # print('Torque', torque)
+
+
 def controlRobot():
     # Foot touch ground, stop exhausting leg and zero hip torque
     if state == 'LOADING':
         pass
     # Upper leg chamber sealed, servo body attitude with hip
     if state == 'COMPRESSION':
-        legLength = 0.25 + 0.52 - p.getJointState(robotId,2)[0]
+        # Seal leg chamber, work like a spring
+        legLength = 0.25 + 0.52 - p.getJointState(robotId, 2)[0]
         if abs(p.getJointState(robotId, 2)[1]) < 0.5:
-            torque = -510
+            torque = -220
         else:
             stiffness = 1 / legLength
             torque = -stiffness * p.getJointState(robotId, 2)[0]
+        # Simulate spring force
         sendTorqueControl(2, torque)
+        # Servo body attitude
+        controlBodyAttitude()
     if state == 'THRUST':
-        sendTorqueControl(2, -510)
+        # Pressurize Leg
+        sendTorqueControl(2, -220)
+        # Servo body attitude
+        controlBodyAttitude()
     if state == 'FLIGHT':
-        sendTorqueControl(2, -300)
+        # Exhaust leg to low pressure
+        sendTorqueControl(2, -10)
+        # Position leg for landing
+        # X direction
+        # sendTorqueControl(0, 2.5)
+
+
+def controlBodyAttitude():
+    kp = 153
+    kv = 14
+    # Balance along X axis
+    pitchAngle = p.getBasePositionAndOrientation(robotId)[1][1]
+    pitchAngleDerivative = p.getBaseVelocity(robotId)[1][1]
+    torque = -kp * (pitchAngle - 0) - kv * pitchAngleDerivative
+    sendTorqueControl(0, -torque)
+    # Balance along Y axis
+    rollAngle = p.getBasePositionAndOrientation(robotId)[1][0]
+    rollAngleDerivative = p.getBaseVelocity(robotId)[1][0]
+    torque2 = -kp * (rollAngle - 0) - kv * rollAngleDerivative
+    sendTorqueControl(1, -torque2)
+    print(torque)
 
 
 #Contain update GUI, robot control and step simulation
@@ -105,6 +142,7 @@ def debug():
             sleep(0.002)
         # print(state, p.getLinkState(robotId, 0)[0][2] - p.getLinkState(robotId, 3)[0][2])
         print(p.getLinkState(robotId, 0)[0][2])
+        # print(p.getJointState(robotId,2)[0])
 if __name__ == '__main__':
     debug()
 
@@ -114,3 +152,5 @@ if __name__ == '__main__':
 # p.createConstraint(robotId, -1, -1, -1, p.JOINT_POINT2POINT, [0, 0, 0], [0, 0, 0], [0, 0, 2])
 # p.getJointState(robotId,0)
 # legLength = p.getLinkState(robotId, 0)[0][2] - p.getLinkState(robotId, 3)[0][2]
+# p.getBasePositionAndOrientation(robotId)
+# p.getEulerFromQuaternion([0,0,0,1])
