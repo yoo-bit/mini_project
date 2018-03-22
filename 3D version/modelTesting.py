@@ -1,6 +1,9 @@
 import pybullet as p
 import pybullet_data
 import console
+import time
+import math
+from statistics import mean
 from time import sleep
 physicsClient = p.connect(p.GUI)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())  # optionally
@@ -11,16 +14,22 @@ robotStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
 robotId = p.loadURDF("3dHopper.urdf", robotStartPos, robotStartOrientation)
 robotPos, robotOrn = p.getBasePositionAndOrientation(robotId)
 useRealTimeSimulation = False
-#Current state
+touchDownTime = time.time()
+liftOffTime = time.time()
+# Current state
 state = 'NULL'
-#Initial leg joint position
+# Record stance time Ts
+Ts = []
+
+# Initial leg joint position
 p.resetDebugVisualizerCamera(2.5, 0, -10, robotPos)
+# Set control mode to torque control, cancel POSITION_CONTROL effect by setting force to 0
 p.setJointMotorControlArray(
     robotId,
-    [0,1,2],
+    [0, 1, 2],
     p.POSITION_CONTROL,
-    targetPositions=[0,0,0],
-    forces=[0,0,0]
+    targetPositions=[0, 0, 0],
+    forces=[0, 0, 0]
     )
 
     
@@ -34,13 +43,24 @@ def getCurrentState():
         # Robot entering into loading when first contact with ground from air
         if state == 'FLIGHT':
             state = 'LOADING'
+            global touchDownTime
+            touchDownTime = time.time()
+            print('LOADING')
         # If leg shortens, enter compression state
         if p.getJointState(robotId, 2)[1] > 0:
             state = 'COMPRESSION'
+        # If leg near full length
+        elif abs(p.getJointState(robotId, 2)[0]) < 0.01 and p.getJointState(robotId, 2)[1] < 0:
+            state = 'UNLOADING'
+            global liftOffTime
+            liftOffTime = time.time()
+            stanceDuration = liftOffTime - touchDownTime
+            global Ts
+            Ts.append(stanceDuration)
+            print('UNLOADING')
         # If leg lengthens, enter thrust state
         elif p.getJointState(robotId, 2)[1] < 0:
             state = 'THRUST'
-
     else:
         state = 'FLIGHT'
 
@@ -63,6 +83,18 @@ def sendTorqueControl(joint, torque):
                 targetPosition=0,
                 force=torque)
     # print('Torque', torque)
+
+
+# Calculate the angle which leg move forward
+def calculateDesiredLegAndBodyAngle(
+        phi, forwardSpeed, desiredForwardSpeed,
+        stancePhaseDuration, r, feedBackGain):
+    secondPart = (forwardSpeed * stancePhaseDuration)/(2*r) + \
+                 (feedBackGain * (forwardSpeed - desiredForwardSpeed))/r
+    desiredAngle = phi - math.asin(secondPart)
+    # print('secondPart', secondPart)
+    # print('desiredAngle', desiredAngle)
+    return desiredAngle
 
 
 def controlRobot():
@@ -88,12 +120,28 @@ def controlRobot():
         # Servo body attitude
         controlBodyAttitude()
     if state == 'FLIGHT':
+        kp = 47
+        kv = 1.26
         # Exhaust leg to low pressure
         sendTorqueControl(2, -10)
         # Position leg for landing
         # X direction
-        # sendTorqueControl(0, 2.5)
-
+        # Calculate desired foot placment
+        forwardSpeedX = p.getBaseVelocity(robotId)[0][0]
+        desiredForwardSpeedX = 0
+        if Ts:
+            t = mean(Ts)
+            desiredHipAngleX = calculateDesiredLegAndBodyAngle(
+                phi=p.getBasePositionAndOrientation(robotId)[1][1],
+                forwardSpeed=1,
+                desiredForwardSpeed=1,
+                stancePhaseDuration=0.4,
+                r=0.75,
+                feedBackGain=0.1
+                )
+            torque = (-kp*(p.getJointState(robotId, 0)[0] - desiredHipAngleX) -
+                      kv*p.getJointState(robotId, 0)[1])
+            sendTorqueControl(0, torque)
 
 def controlBodyAttitude():
     kp = 153
@@ -108,11 +156,10 @@ def controlBodyAttitude():
     rollAngleDerivative = p.getBaseVelocity(robotId)[1][0]
     torque2 = -kp * (rollAngle - 0) - kv * rollAngleDerivative
     sendTorqueControl(1, -torque2)
-    print(torque)
 
 
-#Contain update GUI, robot control and step simulation
-#Auto camera tracking
+# Contain update GUI, robot control and step simulation
+# Auto camera tracking
 def stepRobotSimulation():
     cameraPos = p.getLinkState(robotId, 0)[0]
     getCurrentState()
@@ -141,11 +188,10 @@ def debug():
             stepRobotSimulation()
             sleep(0.002)
         # print(state, p.getLinkState(robotId, 0)[0][2] - p.getLinkState(robotId, 3)[0][2])
-        print(p.getLinkState(robotId, 0)[0][2])
+        # print(p.getLinkState(robotId, 0)[0][2])
         # print(p.getJointState(robotId,2)[0])
 if __name__ == '__main__':
     debug()
-
 
 
 # Debug command lines

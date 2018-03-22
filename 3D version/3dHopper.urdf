@@ -84,7 +84,7 @@
       <origin xyz="0 0 0"/>
       <!--<limit effort="1000.0" lower="-1.57079632679" upper="1.57079632679" velocity="100"/>-->
       <limit effort="1000.0" lower="-0.349" upper="0.349" velocity="100"/>
-      <dynamics damping="0.0" friction="0.3"/>
+      <dynamics damping="0.0" friction="0.0"/>
       <!-- <limit effort="1000.0" lower="-1.2" upper="1.2" velocity="10"/> -->
       <parent link="upper_base_link"/>
       <child link="base_link"/>
