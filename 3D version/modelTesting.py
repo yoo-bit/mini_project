@@ -37,6 +37,16 @@ def getCurrentState():
         state = 'FLIGHT'
 
 
+def sendP(joint, position):
+    p.setJointMotorControl2(
+        bodyUniqueId=robotId,
+        jointIndex=joint,
+        controlMode=p.POSITION_CONTROL,
+        targetPosition=position,
+        maxVelocity=5
+        )
+
+
 def sendTorqueControl(joint, torque):
     p.setJointMotorControl2(
                 bodyUniqueId=robotId,
@@ -51,20 +61,15 @@ def controlRobot():
         pass
     # Upper leg chamber sealed, servo body attitude with hip
     if state == 'COMPRESSION':
-        legLength = p.getLinkState(robotId, 0)[0][2] - \
-                    p.getLinkState(robotId, 3)[0][2]
-        if abs(p.getJointState(robotId, 2)[1]) < 0.6:
-            stiffness = 700 / legLength
+        legLength = 0.25 + 0.52 - p.getJointState(robotId,2)[0]
+        if abs(p.getJointState(robotId, 2)[1]) < 0.5:
+            torque = -510
         else:
             stiffness = 1 / legLength
-        torque = -stiffness * p.getJointState(robotId, 2)[0]
+            torque = -stiffness * p.getJointState(robotId, 2)[0]
         sendTorqueControl(2, torque)
     if state == 'THRUST':
-        legLength = p.getLinkState(robotId, 0)[0][2] - \
-                    p.getLinkState(robotId, 3)[0][2]
-        stiffness = 700 / legLength
-        torque = -stiffness * p.getJointState(robotId, 2)[0]
-        sendTorqueControl(2, torque)
+        sendTorqueControl(2, -510)
     if state == 'FLIGHT':
         sendTorqueControl(2, -300)
 
@@ -99,8 +104,13 @@ def debug():
             stepRobotSimulation()
             sleep(0.002)
         # print(state, p.getLinkState(robotId, 0)[0][2] - p.getLinkState(robotId, 3)[0][2])
-        print(p.getLinkState(robotId,0)[0][2])
+        print(p.getLinkState(robotId, 0)[0][2])
 if __name__ == '__main__':
     debug()
 
 
+
+# Debug command lines
+# p.createConstraint(robotId, -1, -1, -1, p.JOINT_POINT2POINT, [0, 0, 0], [0, 0, 0], [0, 0, 2])
+# p.getJointState(robotId,0)
+# legLength = p.getLinkState(robotId, 0)[0][2] - p.getLinkState(robotId, 3)[0][2]

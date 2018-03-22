@@ -83,7 +83,7 @@
       <axis xyz="1 0 0"/>
       <origin xyz="0 0 0"/>
       <!--<limit effort="1000.0" lower="-1.57079632679" upper="1.57079632679" velocity="100"/>-->
-      <limit effort="1000.0" lower="-0.471" upper="0.471" velocity="100"/>
+      <limit effort="1000.0" lower="-0.349" upper="0.349" velocity="100"/>
       <!--<dynamics damping="0.0" friction="0.3"/>-->
       <!-- <limit effort="1000.0" lower="-1.2" upper="1.2" velocity="10"/> -->
       <parent link="upper_base_link"/>
@@ -93,9 +93,9 @@
 
   <joint name="base_to_beam" type="revolute">
       <axis xyz="0 1 0"/>
-      <origin xyz="0 0 -0.1"/>
+      <origin xyz="0 0 -0.25"/>
       <!--<limit effort="1000.0" lower="-1.57079632679" upper="1.57079632679" velocity="100"/>-->
-      <limit effort="1000.0" lower="-0.471" upper="0.471" velocity="100"/>
+      <limit effort="1000.0" lower="-0.523" upper="0.523" velocity="100"/>
       <dynamics damping="0.0" friction="0.3"/>
       <!-- <limit effort="1000.0" lower="-1.2" upper="1.2" velocity="10"/> -->
       <parent link="balance_beam"/>
