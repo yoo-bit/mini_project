@@ -20,10 +20,8 @@ liftOffTime = time.time()
 state = 'NULL'
 # Record stance time Ts
 Ts = []
-
-# Initial leg joint position
-p.resetDebugVisualizerCamera(2.5, 0, -10, robotPos)
-# Set control mode to torque control, cancel POSITION_CONTROL effect by setting force to 0
+# Set control mode to torque control
+# Cancel POSITION_CONTROL effect by setting force to 0
 p.setJointMotorControlArray(
     robotId,
     [0, 1, 2],
@@ -32,7 +30,7 @@ p.setJointMotorControlArray(
     forces=[0, 0, 0]
     )
 
-    
+
 def getCurrentState():
     # Get contact info
     contactPoints = p.getContactPoints(
@@ -50,7 +48,7 @@ def getCurrentState():
         if p.getJointState(robotId, 2)[1] > 0:
             state = 'COMPRESSION'
         # If leg near full length
-        elif abs(p.getJointState(robotId, 2)[0]) < 0.01 and p.getJointState(robotId, 2)[1] < 0:
+        elif (abs(p.getJointState(robotId, 2)[0]) < 0.01 and p.getJointState(robotId, 2)[1] < 0):
             state = 'UNLOADING'
             global liftOffTime
             liftOffTime = time.time()
@@ -82,7 +80,8 @@ def sendTorqueControl(joint, torque):
                 controlMode=p.TORQUE_CONTROL,
                 targetPosition=0,
                 force=torque)
-    # print('Torque', torque)
+    if joint == 0:
+        print('Torque', torque)
 
 
 # Calculate the angle which leg move forward
@@ -92,7 +91,6 @@ def calculateDesiredLegAndBodyAngle(
     secondPart = (forwardSpeed * stancePhaseDuration)/(2*r) + \
                  (feedBackGain * (forwardSpeed - desiredForwardSpeed))/r
     desiredAngle = phi - math.asin(secondPart)
-    # print('secondPart', secondPart)
     # print('desiredAngle', desiredAngle)
     return desiredAngle
 
@@ -105,8 +103,8 @@ def controlRobot():
     if state == 'COMPRESSION':
         # Seal leg chamber, work like a spring
         legLength = 0.25 + 0.52 - p.getJointState(robotId, 2)[0]
-        if abs(p.getJointState(robotId, 2)[1]) < 0.5:
-            torque = -220
+        if abs(p.getJointState(robotId, 2)[1]) < 0.6:
+            torque = -230
         else:
             stiffness = 1 / legLength
             torque = -stiffness * p.getJointState(robotId, 2)[0]
@@ -116,7 +114,7 @@ def controlRobot():
         controlBodyAttitude()
     if state == 'THRUST':
         # Pressurize Leg
-        sendTorqueControl(2, -220)
+        sendTorqueControl(2, -230)
         # Servo body attitude
         controlBodyAttitude()
     if state == 'FLIGHT':
@@ -133,19 +131,35 @@ def controlRobot():
             t = mean(Ts)
             desiredHipAngleX = calculateDesiredLegAndBodyAngle(
                 phi=p.getBasePositionAndOrientation(robotId)[1][1],
-                forwardSpeed=1,
-                desiredForwardSpeed=1,
-                stancePhaseDuration=0.4,
+                forwardSpeed=forwardSpeedX,
+                desiredForwardSpeed=desiredForwardSpeedX,
+                stancePhaseDuration=0.6,
                 r=0.75,
-                feedBackGain=0.1
+                feedBackGain=0.02
                 )
             torque = (-kp*(p.getJointState(robotId, 0)[0] - desiredHipAngleX) -
                       kv*p.getJointState(robotId, 0)[1])
+            # Control X foot placement
             sendTorqueControl(0, torque)
+            # Control Y foot placement
+            forwardSpeedY = p.getBaseVelocity(robotId)[0][1]
+            desiredForwardSpeedY = 0
+            desiredHipAngleY = -calculateDesiredLegAndBodyAngle(
+                phi=p.getBasePositionAndOrientation(robotId)[1][0],
+                forwardSpeed=forwardSpeedY,
+                desiredForwardSpeed=desiredForwardSpeedY,
+                stancePhaseDuration=0.6,
+                r=0.75,
+                feedBackGain=0.02
+                )
+            torque2 = (-kp*(p.getJointState(robotId, 1)[0] - desiredHipAngleY)
+                       - kv*p.getJointState(robotId, 1)[1])
+            sendTorqueControl(1, torque2)
+
 
 def controlBodyAttitude():
-    kp = 153
-    kv = 14
+    kp = 300
+    kv = 24
     # Balance along X axis
     pitchAngle = p.getBasePositionAndOrientation(robotId)[1][1]
     pitchAngleDerivative = p.getBaseVelocity(robotId)[1][1]
@@ -165,7 +179,7 @@ def stepRobotSimulation():
     getCurrentState()
     controlRobot()
     p.setGravity(0, 0, -10)
-    p.resetDebugVisualizerCamera(1, 0, -10, cameraPos)
+    p.resetDebugVisualizerCamera(2, 45, -20, cameraPos)
     p.stepSimulation()
 
 
@@ -175,7 +189,7 @@ def debug():
         # Single step simulation when pressing down arrow keyboard
         if p.getKeyboardEvents() == {65298: 1}:
             stepRobotSimulation()
-            sleep(0.01)
+            sleep(0.005)
         # Enter console mode when press 'c'
         elif p.getKeyboardEvents() == {99: 1}:
             console.copen(globals(), locals())
@@ -200,3 +214,5 @@ if __name__ == '__main__':
 # legLength = p.getLinkState(robotId, 0)[0][2] - p.getLinkState(robotId, 3)[0][2]
 # p.getBasePositionAndOrientation(robotId)
 # p.getEulerFromQuaternion([0,0,0,1])
+# p.getBaseVelocity(robotId)
+# p.getLinkState(robotId,3)
