@@ -6,6 +6,11 @@ import math
 from statistics import mean
 from time import sleep
 physicsClient = p.connect(p.GUI)
+# Config DebugVisualizer
+# Speed up by disable shadows
+p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 0)
+# Disable GUI side windows
+p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())  # optionally
 p.setGravity(0, 0, -10)
 planeId = p.loadURDF("plane.urdf")
@@ -16,12 +21,23 @@ robotPos, robotOrn = p.getBasePositionAndOrientation(robotId)
 useRealTimeSimulation = False
 touchDownTime = time.time()
 liftOffTime = time.time()
+
 # Current state
 state = 'NULL'
 # Record stance time Ts
 Ts = []
+# Set desired position
+xd = 0
+yd = 0
+# Set position and velocity control feedback kp and kv
+kp = 0.1
+kv = 0.1
+# Set speed limit
+maxSpeed = 2
 # Set control mode to torque control
 # Cancel POSITION_CONTROL effect by setting force to 0
+# Add target text
+p.addUserDebugText('Target', [xd, yd, 0])
 p.setJointMotorControlArray(
     robotId,
     [0, 1, 2],
@@ -29,6 +45,12 @@ p.setJointMotorControlArray(
     targetPositions=[0, 0, 0],
     forces=[0, 0, 0]
     )
+# Add debug parameters
+# Gains for balancing(maintain body attitude)
+balanceKp = p.addUserDebugParameter('balanceKp', 0, 500, 300)
+balanceKv = p.addUserDebugParameter('balanceKv', 0, 50, 27)
+# Gain for foor placement
+footFeedbackGain = p.addUserDebugParameter('footFeedbackGain', 0, 1, 0.03)
 
 
 def getCurrentState():
@@ -43,19 +65,20 @@ def getCurrentState():
             state = 'LOADING'
             global touchDownTime
             touchDownTime = time.time()
-            print('LOADING')
+            # print('LOADING')
         # If leg shortens, enter compression state
         if p.getJointState(robotId, 2)[1] > 0:
             state = 'COMPRESSION'
         # If leg near full length
-        elif (abs(p.getJointState(robotId, 2)[0]) < 0.01 and p.getJointState(robotId, 2)[1] < 0):
+        elif (abs(p.getJointState(robotId, 2)[0]) < 0.01 and
+              p.getJointState(robotId, 2)[1] < 0):
             state = 'UNLOADING'
             global liftOffTime
             liftOffTime = time.time()
             stanceDuration = liftOffTime - touchDownTime
             global Ts
             Ts.append(stanceDuration)
-            print('UNLOADING')
+            # print('UNLOADING')
         # If leg lengthens, enter thrust state
         elif p.getJointState(robotId, 2)[1] < 0:
             state = 'THRUST'
@@ -80,8 +103,6 @@ def sendTorqueControl(joint, torque):
                 controlMode=p.TORQUE_CONTROL,
                 targetPosition=0,
                 force=torque)
-    if joint == 0:
-        print('Torque', torque)
 
 
 # Calculate the angle which leg move forward
@@ -104,7 +125,7 @@ def controlRobot():
         # Seal leg chamber, work like a spring
         legLength = 0.25 + 0.52 - p.getJointState(robotId, 2)[0]
         if abs(p.getJointState(robotId, 2)[1]) < 0.6:
-            torque = -230
+            torque = -240
         else:
             stiffness = 1 / legLength
             torque = -stiffness * p.getJointState(robotId, 2)[0]
@@ -114,7 +135,7 @@ def controlRobot():
         controlBodyAttitude()
     if state == 'THRUST':
         # Pressurize Leg
-        sendTorqueControl(2, -230)
+        sendTorqueControl(2, -240)
         # Servo body attitude
         controlBodyAttitude()
     if state == 'FLIGHT':
@@ -126,16 +147,25 @@ def controlRobot():
         # X direction
         # Calculate desired foot placment
         forwardSpeedX = p.getBaseVelocity(robotId)[0][0]
-        desiredForwardSpeedX = 0
+        desiredForwardSpeedX = getDesiredSpeed(
+                                currentPosition=(
+                                 p.getBasePositionAndOrientation(robotId)[0][0]
+                                ),
+                                currentSpeed=p.getBaseVelocity(robotId)[0][0],
+                                targetPosition=xd,
+                                kp=kp,
+                                kv=kv,
+                                maxForwardSpeed=maxSpeed)
+        print(forwardSpeedX, desiredForwardSpeedX)
         if Ts:
             t = mean(Ts)
             desiredHipAngleX = calculateDesiredLegAndBodyAngle(
                 phi=p.getBasePositionAndOrientation(robotId)[1][1],
                 forwardSpeed=forwardSpeedX,
-                desiredForwardSpeed=desiredForwardSpeedX,
-                stancePhaseDuration=0.6,
+                desiredForwardSpeed=0,
+                stancePhaseDuration=0.39,
                 r=0.75,
-                feedBackGain=0.02
+                feedBackGain=p.readUserDebugParameter(footFeedbackGain)
                 )
             torque = (-kp*(p.getJointState(robotId, 0)[0] - desiredHipAngleX) -
                       kv*p.getJointState(robotId, 0)[1])
@@ -143,14 +173,22 @@ def controlRobot():
             sendTorqueControl(0, torque)
             # Control Y foot placement
             forwardSpeedY = p.getBaseVelocity(robotId)[0][1]
-            desiredForwardSpeedY = 0
+            desiredForwardSpeedY = getDesiredSpeed(
+                                currentPosition=(
+                                 p.getBasePositionAndOrientation(robotId)[0][1]
+                                ),
+                                currentSpeed=p.getBaseVelocity(robotId)[0][1],
+                                targetPosition=yd,
+                                kp=kp,
+                                kv=kv,
+                                maxForwardSpeed=maxSpeed)
             desiredHipAngleY = -calculateDesiredLegAndBodyAngle(
                 phi=p.getBasePositionAndOrientation(robotId)[1][0],
                 forwardSpeed=forwardSpeedY,
-                desiredForwardSpeed=desiredForwardSpeedY,
-                stancePhaseDuration=0.6,
+                desiredForwardSpeed=0,
+                stancePhaseDuration=0.39,
                 r=0.75,
-                feedBackGain=0.02
+                feedBackGain=p.readUserDebugParameter(footFeedbackGain)
                 )
             torque2 = (-kp*(p.getJointState(robotId, 1)[0] - desiredHipAngleY)
                        - kv*p.getJointState(robotId, 1)[1])
@@ -158,8 +196,8 @@ def controlRobot():
 
 
 def controlBodyAttitude():
-    kp = 300
-    kv = 24
+    kp = p.readUserDebugParameter(balanceKp)
+    kv = p.readUserDebugParameter(balanceKv)
     # Balance along X axis
     pitchAngle = p.getBasePositionAndOrientation(robotId)[1][1]
     pitchAngleDerivative = p.getBaseVelocity(robotId)[1][1]
@@ -189,7 +227,7 @@ def debug():
         # Single step simulation when pressing down arrow keyboard
         if p.getKeyboardEvents() == {65298: 1}:
             stepRobotSimulation()
-            sleep(0.005)
+            sleep(0.01)
         # Enter console mode when press 'c'
         elif p.getKeyboardEvents() == {99: 1}:
             console.copen(globals(), locals())
@@ -198,12 +236,45 @@ def debug():
             useRealTimeSimulation = True
         elif p.getKeyboardEvents() == {116: 1}:
             useRealTimeSimulation = False
+        # Press 'p' to reset robot position and orientation
+        elif p.getKeyboardEvents() == {112: 1}:
+            p.resetBasePositionAndOrientation(robotId, robotPos, robotOrn)
+            p.resetJointState(robotId, 0, 0, 0)
+            p.resetJointState(robotId, 1, 0, 0)
+            p.resetJointState(robotId, 2, 0, 0)
         if useRealTimeSimulation:
             stepRobotSimulation()
             sleep(0.002)
         # print(state, p.getLinkState(robotId, 0)[0][2] - p.getLinkState(robotId, 3)[0][2])
         # print(p.getLinkState(robotId, 0)[0][2])
         # print(p.getJointState(robotId,2)[0])
+
+
+def getDesiredSpeed(currentPosition, currentSpeed, targetPosition,
+                    kp, kv, maxForwardSpeed):
+        d = min(-kp * (currentPosition - targetPosition) - kv * (currentSpeed),
+                maxForwardSpeed)
+        return d
+
+
+# Debug priting function
+
+def pt(name):
+    if name == 'xf':
+        xf = p.getLinkState(robotId, 3)[0][0] -\
+             p.getLinkState(robotId, 0)[0][0]
+        print(xf)
+    if name == 'xfd':
+        xfd = p.getBaseVelocity(robotId)[0][0] * 0.39 / 2 +\
+              p.readUserDebugParameter(footFeedbackGain) *\
+              (p.getBaseVelocity(robotId)[0][0])
+        print(xfd)
+    if name == 'xVelocity':
+        print(p.getBaseVelocity(robotId)[0][0])
+    if name == 'footPlacementCompare':
+        print('xf', xf, 'xfd', xfd)
+
+
 if __name__ == '__main__':
     debug()
 
