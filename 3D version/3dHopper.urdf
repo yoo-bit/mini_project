@@ -36,7 +36,7 @@
      </collision>
      <inertial>
      <mass value="16"/>
-     <inertia ixx="0.5668" ixy="0.0" ixz="0.0" iyy="0.5668" iyz="0.0" izz="0.75088"/>
+     <inertia ixx="0.709" ixy="0.0" ixz="0.0" iyy="0.709" iyz="0.0" izz="0.709"/>
      <origin rpy="0 0 0" xyz="0 0 0"/>
    </inertial>
   </link>
@@ -79,24 +79,24 @@
 
   </link>
 
-  <joint name="base_joint" type="continuous">
+  <joint name="base_joint" type="revolute">
       <axis xyz="1 0 0"/>
       <origin xyz="0 0 0"/>
       <!--<limit effort="1000.0" lower="-1.57079632679" upper="1.57079632679" velocity="100"/>-->
       <limit effort="1000.0" lower="-0.349" upper="0.349" velocity="100"/>
-      <dynamics damping="0.0" friction="0.3"/>
+      <dynamics damping="0.0" friction="0.0"/>
       <!-- <limit effort="1000.0" lower="-1.2" upper="1.2" velocity="10"/> -->
       <parent link="upper_base_link"/>
       <child link="base_link"/>
 
     </joint>
 
-  <joint name="base_to_beam" type="continuous">
+  <joint name="base_to_beam" type="revolute">
       <axis xyz="0 1 0"/>
       <origin xyz="0 0 -0.25"/>
       <!--<limit effort="1000.0" lower="-1.57079632679" upper="1.57079632679" velocity="100"/>-->
-      <limit effort="1000.0" lower="-0.523" upper="0.523" velocity="100"/>
-      <dynamics damping="0.0" friction="0.3"/>
+      <limit effort="1000.0" lower="-0.349" upper="0.349" velocity="100"/>
+      <dynamics damping="0.0" friction="0.0"/>
       <!-- <limit effort="1000.0" lower="-1.2" upper="1.2" velocity="10"/> -->
       <parent link="balance_beam"/>
       <child link="upper_base_link"/>
@@ -118,9 +118,9 @@
            <origin rpy="0 0 0" xyz="0 0 0"/>
          </collision>
          <inertial>
-         <mass value="0.15"/>
-         <inertia ixx="0.3140000000e-2" ixy="0.0" ixz="0.0" iyy="0.3140000000e-2" iyz="0.0" izz="0.3000000000e-4"/>
-         <origin rpy="0 0 0" xyz="0 0 -0.4"/>
+         <mass value="0.91"/>
+         <inertia ixx="0.111" ixy="0.0" ixz="0.0" iyy="0.111" iyz="0.0" izz="0.111"/>
+         <origin rpy="0 0 0" xyz="0 0 0"/>
        </inertial>
       </link>
 

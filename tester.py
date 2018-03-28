@@ -130,7 +130,7 @@ while 1:
         currentHipAngleDerivative = p.getJointState(boxId, 0)[1]
         currentHipAngle = p.getJointState(boxId, 0)[0]
         if time.time() - startTime > 15:
-            targetPositionX = 7.0
+            targetPositionX = 0.0
         else:
             targetPositionX = 7.0
         currentBodyPositionX = p.getLinkState(boxId, 0)[4][0]

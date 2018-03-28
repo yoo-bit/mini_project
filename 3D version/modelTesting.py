@@ -3,8 +3,11 @@ import pybullet_data
 import console
 import time
 import math
+import pyqtgraph as pg
+import numpy as np
 from statistics import mean
 from time import sleep
+from collections import deque
 physicsClient = p.connect(p.GUI)
 # Config DebugVisualizer
 # Speed up by disable shadows
@@ -31,9 +34,9 @@ xd = 0
 yd = 0
 # Set position and velocity control feedback kp and kv
 kp = 0.1
-kv = 0.1
+kv = 0.8
 # Set speed limit
-maxSpeed = 2
+maxSpeed = 1.5
 # Set control mode to torque control
 # Cancel POSITION_CONTROL effect by setting force to 0
 # Add target text
@@ -42,15 +45,24 @@ p.setJointMotorControlArray(
     robotId,
     [0, 1, 2],
     p.POSITION_CONTROL,
-    targetPositions=[0, 0, 0],
+    targetPositions=[0.0, 0, 0],
     forces=[0, 0, 0]
     )
 # Add debug parameters
 # Gains for balancing(maintain body attitude)
-balanceKp = p.addUserDebugParameter('balanceKp', 0, 500, 300)
-balanceKv = p.addUserDebugParameter('balanceKv', 0, 50, 27)
+balanceKp = p.addUserDebugParameter('balanceKp', 0, 500, 200)
+balanceKv = p.addUserDebugParameter('balanceKv', 0, 50, 14)
 # Gain for foor placement
-footFeedbackGain = p.addUserDebugParameter('footFeedbackGain', 0, 1, 0.03)
+footFeedbackGain = p.addUserDebugParameter('footFeedbackGain', 0, 0.1, 0.035)
+# Record footPlacement position
+xfList = []
+xfdList = []
+xVelocityList = []
+xVdList = []
+# Real time plot switch
+realTimePlot = [False, False]
+# Set thrust force
+thrustForce = 250
 
 
 def getCurrentState():
@@ -125,7 +137,7 @@ def controlRobot():
         # Seal leg chamber, work like a spring
         legLength = 0.25 + 0.52 - p.getJointState(robotId, 2)[0]
         if abs(p.getJointState(robotId, 2)[1]) < 0.6:
-            torque = -240
+            torque = -thrustForce
         else:
             stiffness = 1 / legLength
             torque = -stiffness * p.getJointState(robotId, 2)[0]
@@ -135,7 +147,7 @@ def controlRobot():
         controlBodyAttitude()
     if state == 'THRUST':
         # Pressurize Leg
-        sendTorqueControl(2, -240)
+        sendTorqueControl(2, -thrustForce)
         # Servo body attitude
         controlBodyAttitude()
     if state == 'FLIGHT':
@@ -156,14 +168,14 @@ def controlRobot():
                                 kp=kp,
                                 kv=kv,
                                 maxForwardSpeed=maxSpeed)
-        print(forwardSpeedX, desiredForwardSpeedX)
+        xVdList.append(desiredForwardSpeedX)
         if Ts:
             t = mean(Ts)
             desiredHipAngleX = calculateDesiredLegAndBodyAngle(
                 phi=p.getBasePositionAndOrientation(robotId)[1][1],
                 forwardSpeed=forwardSpeedX,
-                desiredForwardSpeed=0,
-                stancePhaseDuration=0.39,
+                desiredForwardSpeed=0.6,
+                stancePhaseDuration=t,
                 r=0.75,
                 feedBackGain=p.readUserDebugParameter(footFeedbackGain)
                 )
@@ -186,7 +198,7 @@ def controlRobot():
                 phi=p.getBasePositionAndOrientation(robotId)[1][0],
                 forwardSpeed=forwardSpeedY,
                 desiredForwardSpeed=0,
-                stancePhaseDuration=0.39,
+                stancePhaseDuration=t,
                 r=0.75,
                 feedBackGain=p.readUserDebugParameter(footFeedbackGain)
                 )
@@ -209,24 +221,32 @@ def controlBodyAttitude():
     torque2 = -kp * (rollAngle - 0) - kv * rollAngleDerivative
     sendTorqueControl(1, -torque2)
 
-
 # Contain update GUI, robot control and step simulation
 # Auto camera tracking
+
+
 def stepRobotSimulation():
     cameraPos = p.getLinkState(robotId, 0)[0]
     getCurrentState()
     controlRobot()
     p.setGravity(0, 0, -10)
-    p.resetDebugVisualizerCamera(2, 45, -20, cameraPos)
+    p.resetDebugVisualizerCamera(1.5, 0, 0, cameraPos)
     p.stepSimulation()
 
 
 def debug():
     while 1:
         global useRealTimeSimulation
+        global state
+        global xfList
+        global xfdList
+        global xVdList
+        global xVelocityList
+        global Ts
         # Single step simulation when pressing down arrow keyboard
         if p.getKeyboardEvents() == {65298: 1}:
             stepRobotSimulation()
+            recordData()
             sleep(0.01)
         # Enter console mode when press 'c'
         elif p.getKeyboardEvents() == {99: 1}:
@@ -238,16 +258,45 @@ def debug():
             useRealTimeSimulation = False
         # Press 'p' to reset robot position and orientation
         elif p.getKeyboardEvents() == {112: 1}:
-            p.resetBasePositionAndOrientation(robotId, robotPos, robotOrn)
+            p.resetBasePositionAndOrientation(robotId, robotStartPos, robotOrn)
             p.resetJointState(robotId, 0, 0, 0)
             p.resetJointState(robotId, 1, 0, 0)
             p.resetJointState(robotId, 2, 0, 0)
+            xfList = []
+            xfdList = []
+            xVdList = []
+            xVelocityList = []
+            Ts = []
+            state = 'NULL'
+            p.setJointMotorControlArray(
+                robotId,
+                [0, 1, 2],
+                p.POSITION_CONTROL,
+                targetPositions=[0.0, 0, 0],
+                forces=[0, 0, 0]
+                )
+
+        elif p.getKeyboardEvents() == {49: 1}:
+            pw.addLegend()
+            # pw.plot(xfList, pen=1, name='xf')
+            # pw.plot(xfdList, pen=2, name='xfd')
+            pw.plot(xVelocityList, pen=3, name='vVelocity')
+            # pw.plot(xfdList, pen=4, name='vDesire')
+        recordData()
         if useRealTimeSimulation:
             stepRobotSimulation()
             sleep(0.002)
-        # print(state, p.getLinkState(robotId, 0)[0][2] - p.getLinkState(robotId, 3)[0][2])
-        # print(p.getLinkState(robotId, 0)[0][2])
-        # print(p.getJointState(robotId,2)[0])
+
+
+def recordData():
+    xf = (p.getLinkState(robotId, 3)[0][0] -
+          p.getLinkState(robotId, 0)[0][0])
+    xfList.append(xf)
+    xfd = (p.getBaseVelocity(robotId)[0][0] * 0.39 / 2 +
+           p.readUserDebugParameter(footFeedbackGain) *
+           (p.getBaseVelocity(robotId)[0][0]))
+    xfdList.append(xfd)
+    xVelocityList.append(p.getBaseVelocity(robotId)[0][0])
 
 
 def getDesiredSpeed(currentPosition, currentSpeed, targetPosition,
@@ -261,21 +310,18 @@ def getDesiredSpeed(currentPosition, currentSpeed, targetPosition,
 
 def pt(name):
     if name == 'xf':
-        xf = p.getLinkState(robotId, 3)[0][0] -\
-             p.getLinkState(robotId, 0)[0][0]
-        print(xf)
+        pg.plot(xfList)
     if name == 'xfd':
-        xfd = p.getBaseVelocity(robotId)[0][0] * 0.39 / 2 +\
-              p.readUserDebugParameter(footFeedbackGain) *\
-              (p.getBaseVelocity(robotId)[0][0])
-        print(xfd)
+        pg.plot(xfdList)
     if name == 'xVelocity':
         print(p.getBaseVelocity(robotId)[0][0])
     if name == 'footPlacementCompare':
-        print('xf', xf, 'xfd', xfd)
+        win = pg.GraphicsWindow()
+        win.addPlot(xfList, row=0, col=0)
 
 
 if __name__ == '__main__':
+    pw = pg.plot(title='footPlaceMent')
     debug()
 
 
