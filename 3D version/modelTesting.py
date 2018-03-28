@@ -33,10 +33,10 @@ Ts = []
 xd = 0
 yd = 0
 # Set position and velocity control feedback kp and kv
-kp = 0.1
-kv = 0.8
+kp = 1
+kv = 0
 # Set speed limit
-maxSpeed = 1.5
+maxSpeed = 1.2
 # Set control mode to torque control
 # Cancel POSITION_CONTROL effect by setting force to 0
 # Add target text
@@ -50,10 +50,10 @@ p.setJointMotorControlArray(
     )
 # Add debug parameters
 # Gains for balancing(maintain body attitude)
-balanceKp = p.addUserDebugParameter('balanceKp', 0, 500, 200)
+balanceKp = p.addUserDebugParameter('balanceKp', 0, 500, 300)
 balanceKv = p.addUserDebugParameter('balanceKv', 0, 50, 14)
 # Gain for foor placement
-footFeedbackGain = p.addUserDebugParameter('footFeedbackGain', 0, 0.1, 0.035)
+footFeedbackGain = p.addUserDebugParameter('footFeedbackGain', 0, 0.1, 0.05)
 # Record footPlacement position
 xfList = []
 xfdList = []
@@ -174,8 +174,8 @@ def controlRobot():
             desiredHipAngleX = calculateDesiredLegAndBodyAngle(
                 phi=p.getBasePositionAndOrientation(robotId)[1][1],
                 forwardSpeed=forwardSpeedX,
-                desiredForwardSpeed=0.6,
-                stancePhaseDuration=t,
+                desiredForwardSpeed=1.2,
+                stancePhaseDuration=0.39,
                 r=0.75,
                 feedBackGain=p.readUserDebugParameter(footFeedbackGain)
                 )
@@ -197,8 +197,8 @@ def controlRobot():
             desiredHipAngleY = -calculateDesiredLegAndBodyAngle(
                 phi=p.getBasePositionAndOrientation(robotId)[1][0],
                 forwardSpeed=forwardSpeedY,
-                desiredForwardSpeed=0,
-                stancePhaseDuration=t,
+                desiredForwardSpeed=desiredForwardSpeedY,
+                stancePhaseDuration=0.39,
                 r=0.75,
                 feedBackGain=p.readUserDebugParameter(footFeedbackGain)
                 )
@@ -280,12 +280,13 @@ def debug():
             pw.addLegend()
             # pw.plot(xfList, pen=1, name='xf')
             # pw.plot(xfdList, pen=2, name='xfd')
-            pw.plot(xVelocityList, pen=3, name='vVelocity')
-            # pw.plot(xfdList, pen=4, name='vDesire')
+            # pw.plot(xVelocityList, pen=3, name='vVelocity')
+            pw.plot(xVdList, pen=4, name='vDesire')
         recordData()
         if useRealTimeSimulation:
             stepRobotSimulation()
             sleep(0.002)
+        # print(xVelocityList[-1])
 
 
 def recordData():
