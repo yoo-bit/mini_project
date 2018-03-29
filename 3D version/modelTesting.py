@@ -30,13 +30,13 @@ state = 'NULL'
 # Record stance time Ts
 Ts = []
 # Set desired position
-xd = 0
+xd = 5
 yd = 0
 # Set position and velocity control feedback kp and kv
-kp = 1
-kv = 0
+kPosition = 0.1
+kVelocity = 0.1
 # Set speed limit
-maxSpeed = 1.2
+maxSpeed = 0.3
 # Set control mode to torque control
 # Cancel POSITION_CONTROL effect by setting force to 0
 # Add target text
@@ -50,15 +50,18 @@ p.setJointMotorControlArray(
     )
 # Add debug parameters
 # Gains for balancing(maintain body attitude)
-balanceKp = p.addUserDebugParameter('balanceKp', 0, 500, 300)
+balanceKp = p.addUserDebugParameter('balanceKp', 0, 500, 200)
 balanceKv = p.addUserDebugParameter('balanceKv', 0, 50, 14)
 # Gain for foor placement
-footFeedbackGain = p.addUserDebugParameter('footFeedbackGain', 0, 0.1, 0.05)
+footFeedbackGain = p.addUserDebugParameter('footFeedbackGain', 0, 0.1, 0.035)
 # Record footPlacement position
 xfList = []
 xfdList = []
 xVelocityList = []
 xVdList = []
+yVelocityList = []
+yVdList = []
+xVdListUnFiltered = []
 # Real time plot switch
 realTimePlot = [False, False]
 # Set thrust force
@@ -165,17 +168,17 @@ def controlRobot():
                                 ),
                                 currentSpeed=p.getBaseVelocity(robotId)[0][0],
                                 targetPosition=xd,
-                                kp=kp,
-                                kv=kv,
+                                kp=kPosition,
+                                kv=kVelocity,
                                 maxForwardSpeed=maxSpeed)
         xVdList.append(desiredForwardSpeedX)
         if Ts:
-            t = mean(Ts)
+            t = Ts[-1]
             desiredHipAngleX = calculateDesiredLegAndBodyAngle(
                 phi=p.getBasePositionAndOrientation(robotId)[1][1],
                 forwardSpeed=forwardSpeedX,
-                desiredForwardSpeed=1.2,
-                stancePhaseDuration=0.39,
+                desiredForwardSpeed=desiredForwardSpeedX,
+                stancePhaseDuration=t,
                 r=0.75,
                 feedBackGain=p.readUserDebugParameter(footFeedbackGain)
                 )
@@ -191,14 +194,14 @@ def controlRobot():
                                 ),
                                 currentSpeed=p.getBaseVelocity(robotId)[0][1],
                                 targetPosition=yd,
-                                kp=kp,
-                                kv=kv,
+                                kp=kPosition,
+                                kv=kVelocity,
                                 maxForwardSpeed=maxSpeed)
             desiredHipAngleY = -calculateDesiredLegAndBodyAngle(
                 phi=p.getBasePositionAndOrientation(robotId)[1][0],
                 forwardSpeed=forwardSpeedY,
                 desiredForwardSpeed=desiredForwardSpeedY,
-                stancePhaseDuration=0.39,
+                stancePhaseDuration=t,
                 r=0.75,
                 feedBackGain=p.readUserDebugParameter(footFeedbackGain)
                 )
@@ -221,10 +224,9 @@ def controlBodyAttitude():
     torque2 = -kp * (rollAngle - 0) - kv * rollAngleDerivative
     sendTorqueControl(1, -torque2)
 
+
 # Contain update GUI, robot control and step simulation
 # Auto camera tracking
-
-
 def stepRobotSimulation():
     cameraPos = p.getLinkState(robotId, 0)[0]
     getCurrentState()
@@ -280,13 +282,14 @@ def debug():
             pw.addLegend()
             # pw.plot(xfList, pen=1, name='xf')
             # pw.plot(xfdList, pen=2, name='xfd')
-            # pw.plot(xVelocityList, pen=3, name='vVelocity')
-            pw.plot(xVdList, pen=4, name='vDesire')
+            # pw.plot(xVelocityList, pen=3, name='xVelocity')
+            # pw.plot(xVdList, pen=4, name='xDesire')
+            # pw.plot(yVelocityList, pen=5, name='yVelocity')
+            pw.plot(xVdListUnFiltered, pen=5, name='xDesireUnfiltered')
         recordData()
         if useRealTimeSimulation:
             stepRobotSimulation()
             sleep(0.002)
-        # print(xVelocityList[-1])
 
 
 def recordData():
@@ -298,12 +301,14 @@ def recordData():
            (p.getBaseVelocity(robotId)[0][0]))
     xfdList.append(xfd)
     xVelocityList.append(p.getBaseVelocity(robotId)[0][0])
+    yVelocityList.append(p.getBaseVelocity(robotId)[0][1])
 
 
 def getDesiredSpeed(currentPosition, currentSpeed, targetPosition,
                     kp, kv, maxForwardSpeed):
         d = min(-kp * (currentPosition - targetPosition) - kv * (currentSpeed),
                 maxForwardSpeed)
+        xVdListUnFiltered.append(-kp * (currentPosition - targetPosition) - kv * (currentSpeed))
         return d
 
 
