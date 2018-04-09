@@ -34,9 +34,9 @@ xd = 5
 yd = 0
 # Set position and velocity control feedback kp and kv
 kPosition = 0.1
-kVelocity = 0.1
+kVelocity = -1
 # Set speed limit
-maxSpeed = 0.3
+maxSpeed = 2.4
 # Set control mode to torque control
 # Cancel POSITION_CONTROL effect by setting force to 0
 # Add target text
@@ -51,7 +51,7 @@ p.setJointMotorControlArray(
 # Add debug parameters
 # Gains for balancing(maintain body attitude)
 balanceKp = p.addUserDebugParameter('balanceKp', 0, 500, 200)
-balanceKv = p.addUserDebugParameter('balanceKv', 0, 50, 14)
+balanceKv = p.addUserDebugParameter('balanceKv', 0, 50, 12)
 # Gain for foor placement
 footFeedbackGain = p.addUserDebugParameter('footFeedbackGain', 0, 0.1, 0.035)
 # Record footPlacement position
