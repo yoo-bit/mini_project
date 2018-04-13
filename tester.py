@@ -30,7 +30,7 @@ touchDownTime = time.time()
 liftOffTime = time.time()
 stancePhaceTimeArray = []
 p.enableJointForceTorqueSensor(boxId, 0)
-p.addUserDebugText('Target', [7, 0, 0])
+p.addUserDebugText('Target', [5, 0, 0])
 bodyPosition = [0, 0, 0]
 p.setJointMotorControl2(
             bodyUniqueId=boxId,
@@ -132,7 +132,7 @@ while 1:
         if time.time() - startTime > 15:
             targetPositionX = 0.0
         else:
-            targetPositionX = 7.0
+            targetPositionX = 5.0
         currentBodyPositionX = p.getLinkState(boxId, 0)[4][0]
         currentBodyPosition = p.getLinkState(boxId, 0)[4]
         # p.addUserDebugLine(bodyPosition, currentBodyPosition)
